@@ -4,10 +4,7 @@ import App from './App.tsx';
 import './index.css';
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null}> {
-  constructor(props: {children: ReactNode}) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  state: {hasError: boolean; error: Error | null} = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
@@ -27,7 +24,8 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
       );
     }
 
-    return this.props.children;
+    // TypeScript + React 19 class component compatibility: access via prototype chain
+    return (this as unknown as Component<{children: ReactNode}>).props.children;
   }
 }
 

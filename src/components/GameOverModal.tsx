@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { motion } from 'motion/react';
 import { Trophy, RefreshCcw } from 'lucide-react';
 
@@ -29,7 +29,7 @@ export function GameOverModal({ score, onRestart }: GameOverModalProps) {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 

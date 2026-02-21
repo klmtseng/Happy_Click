@@ -403,49 +403,35 @@ export function useSound(combo: number, bgmPhase: number) {
     osc.stop(t + 0.4);
   }, []);
 
-  const playSpecialVoice = useCallback((text: string, echo: boolean = false) => {
-    if ('speechSynthesis' in window) {
-      // Cancel any ongoing speech to ensure immediate shout
-      window.speechSynthesis.cancel();
+  // Synthesized stab sound used for rank-up and special combo announcements.
+  // Two-oscillator power chord (root + fifth) with fast attack and optional echo.
+  // Replaces browser TTS — consistent behaviour across all platforms.
+  const playAnnouncementSound = useCallback((echo: boolean = false) => {
+    if (!audioContextRef.current) return;
+    const ctx = audioContextRef.current;
 
-      const speak = (delay: number = 0, volume: number = 1) => {
-          const utterance = new SpeechSynthesisUtterance(text);
-          // Changed from "Movie Trailer" (0.4 pitch) to "Energetic Announcer"
-          utterance.rate = 1.1; // Slightly fast
-          utterance.pitch = 0.8; // Slightly deep but natural
-          utterance.volume = volume;
-          
-          // Try to find a good male voice, but maybe not the "Google UK Male" if that was bad.
-          // Let's try to find a standard "Google US English" or "Microsoft David" type.
-          const voices = window.speechSynthesis.getVoices();
-          
-          // Priority: 
-          // 1. "Google US English" (Standard, clean)
-          // 2. "Microsoft David" (Standard Windows Male)
-          // 3. Any "English" voice
-          const preferredVoice = voices.find(v => v.name === 'Google US English') || 
-                                 voices.find(v => v.name.includes('David')) ||
-                                 voices.find(v => v.lang === 'en-US');
-          
-          if (preferredVoice) utterance.voice = preferredVoice;
+    const playStab = (startTime: number, gainScale: number = 1) => {
+      const frequencies = [880, 1320]; // A5 + E6 power chord
+      frequencies.forEach(freq => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, startTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.8, startTime + 0.25);
+        gain.gain.setValueAtTime(0.25 * gainScale, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(startTime);
+        osc.stop(startTime + 0.25);
+      });
+    };
 
-          if (delay > 0) {
-              setTimeout(() => window.speechSynthesis.speak(utterance), delay);
-          } else {
-              window.speechSynthesis.speak(utterance);
-          }
-      };
-
-      // Main Voice
-      speak(0, 1);
-      
-      if (echo) {
-        // Echo 1
-        speak(150, 0.6);
-        
-        // Echo 2
-        speak(300, 0.3);
-      }
+    const t = ctx.currentTime;
+    playStab(t, 1);
+    if (echo) {
+      playStab(t + 0.15, 0.6);
+      playStab(t + 0.30, 0.3);
     }
   }, []);
 
@@ -524,5 +510,5 @@ export function useSound(combo: number, bgmPhase: number) {
 
   }, []);
 
-  return { playClickSound, playLevelUpSound, initAudio, playSpecialVoice, playDecaySound, toggleMute, isMuted, playHyperspaceSound, playRocketSound, playShockwaveSound, playEncouragementSound, playFlybySound };
+  return { playClickSound, playLevelUpSound, initAudio, playAnnouncementSound, playDecaySound, toggleMute, isMuted, playHyperspaceSound, playRocketSound, playShockwaveSound, playEncouragementSound, playFlybySound };
 }

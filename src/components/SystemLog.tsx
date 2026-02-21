@@ -1,33 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-
-const LOG_MESSAGES = [
-  "SYNC RATE INCREASING...",
-  "LIMITER RELEASED",
-  "ENERGY SURGE DETECTED",
-  "CORE TEMP RISING",
-  "NEURAL LINK ESTABLISHED",
-  "PROTOCOL 77-B ACTIVE",
-  "OVERCLOCKING...",
-  "DATA STREAM STABLE",
-  "RESONANCE DETECTED",
-  "AT FIELD NEUTRALIZED"
-];
+import { SYSTEM_LOG_MESSAGES } from '../config/gameConfig';
 
 interface SystemLogProps {
   combo: number;
   level: number;
 }
 
-export function SystemLog({ combo, level }: SystemLogProps) {
+export function SystemLog({ combo }: SystemLogProps) {
   const [logs, setLogs] = useState<{ id: number; text: string }[]>([]);
-  const nextId = useRef(0);
+  const nextId    = useRef(0);
   const lastCombo = useRef(combo);
 
   useEffect(() => {
     if (combo > lastCombo.current && Math.random() > 0.7) {
-      const text = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
-      const id = nextId.current++;
+      const text = SYSTEM_LOG_MESSAGES[Math.floor(Math.random() * SYSTEM_LOG_MESSAGES.length)];
+      const id   = nextId.current++;
       setLogs(prev => [...prev.slice(-4), { id, text }]);
     }
     lastCombo.current = combo;
