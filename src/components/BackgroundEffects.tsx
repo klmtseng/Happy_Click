@@ -20,13 +20,6 @@ export function BackgroundEffects({ level, combo }: BackgroundEffectsProps) {
 
     let animationFrameId: number;
     const stars: { x: number; y: number; z: number; speed: number }[] = [];
-    const rockets: { 
-        x: number; 
-        y: number; 
-        speed: number; 
-        type: 'rocket' | 'fighter' | 'ufo'; 
-        scale: number;
-    }[] = [];
     const shockwaves: { size: number; opacity: number; speed: number }[] = [];
     let hyperspaceActive = false;
     let hyperspaceTimer = 0;
@@ -180,8 +173,8 @@ export function BackgroundEffects({ level, combo }: BackgroundEffectsProps) {
         }
 
         // --- ROCKETS ---
-        for (let i = rockets.length - 1; i >= 0; i--) {
-            const r = rockets[i];
+        for (let i = rocketsRef.current.length - 1; i >= 0; i--) {
+            const r = rocketsRef.current[i];
             // Grow to max size of ~1cm (approx 40px)
             // Start at 0.1 scale (4px), end at 1.0 scale (40px)
             if (r.scale < 1.5) {
@@ -251,7 +244,7 @@ export function BackgroundEffects({ level, combo }: BackgroundEffectsProps) {
             ctx.restore();
 
             if (r.x > canvas.width + 200) {
-                rockets.splice(i, 1);
+                rocketsRef.current.splice(i, 1);
             }
         }
 
