@@ -14,6 +14,7 @@ import {
   FEEDBACK_HIGH_MESSAGES,
   HYPERSPACE_STAR_COLORS,
 } from './config/gameConfig';
+import { getTopScores, type ScoreEntry } from './services/leaderboard';
 
 export default function App() {
   const { combo, level, handleClick, maxCombo, score, isNewRecord, isDecaying, resetGame } = useGameLogic();
@@ -45,9 +46,15 @@ export default function App() {
   } = useSound(combo, bgmPhase);
 
   // Ranking State
+  const [globalScores, setGlobalScores] = useState<ScoreEntry[]>([]);
   const [currentRank, setCurrentRank] = useState<number>(1);
   const [prevRank, setPrevRank]       = useState<number>(1);
   const [showRankUp, setShowRankUp]   = useState(false);
+
+  // Load global leaderboard once on mount (used for real-time rank display)
+  useEffect(() => {
+    getTopScores(100).then(setGlobalScores);
+  }, []);
 
   // Floating Feedback State
   const [feedbacks, setFeedbacks] = useState<
@@ -63,13 +70,7 @@ export default function App() {
       return;
     }
 
-    const saved = localStorage.getItem('leaderboard');
-    let leaderboard: { name: string; score: number }[] = [];
-    if (saved) {
-      try { leaderboard = JSON.parse(saved); } catch (_) {}
-    }
-
-    const newRank = leaderboard.filter(entry => entry.score > score).length + 1;
+    const newRank = globalScores.filter(entry => entry.score > score).length + 1;
 
     if (newRank < prevRank) {
       setShowRankUp(true);
@@ -79,7 +80,7 @@ export default function App() {
 
     setPrevRank(currentRank);
     setCurrentRank(newRank);
-  }, [score, prevRank, currentRank, playAnnouncementSound]);
+  }, [score, prevRank, currentRank, globalScores, playAnnouncementSound]);
 
   // ─── Game Over Logic ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -97,6 +98,8 @@ export default function App() {
     setHyperspaceTarget(COMBO_EVENTS.HYPERSPACE_INTERVAL);
     setCurrentRank(1);
     setPrevRank(1);
+    // Refresh global scores so the next game has up-to-date rankings
+    getTopScores(100).then(setGlobalScores);
   };
 
   // ─── Hyperspace Logic ────────────────────────────────────────────────────────

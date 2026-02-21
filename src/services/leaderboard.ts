@@ -1,20 +1,12 @@
 //
 // src/services/leaderboard.ts
 //
-// Phase 1 (current): localStorage — per-browser, works on Vercel static deployment.
+// All components read/write through these three functions only.
+// Backing store: Vercel Serverless Functions → Neon PostgreSQL (global shared).
+// Local dev:     same fetch() calls → Express server → in-memory DB (server.ts).
 //
-// To upgrade to Phase 2 (global shared leaderboard):
-//   1. Create Vercel serverless functions:
-//        api/leaderboard.ts  →  GET (top scores)  +  POST (add score)
-//        api/rival.ts        →  GET ?score=N       →  return rival entry
-//   2. Add your database URL in Vercel → Settings → Environment Variables
-//      (e.g. POSTGRES_URL from Neon, or use Vercel KV)
-//   3. Replace the three functions below with fetch() calls to those endpoints.
-//   4. Components (Leaderboard, RivalTracker, GameOverModal) require NO changes.
+// If you ever need to swap the backend, change only this file.
 //
-
-const STORAGE_KEY = 'leaderboard';
-const MAX_ENTRIES = 10;
 
 export interface ScoreEntry {
   name: string;
@@ -27,33 +19,34 @@ export interface Rival {
   rank: number;
 }
 
-function readStorage(): ScoreEntry[] {
+export async function getTopScores(limit = 10): Promise<ScoreEntry[]> {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const res = await fetch(`/api/leaderboard?limit=${limit}`);
+    if (!res.ok) throw new Error('API error');
+    return await res.json();
   } catch {
     return [];
   }
 }
 
-export async function getTopScores(limit = 10): Promise<ScoreEntry[]> {
-  const scores = readStorage();
-  return scores.sort((a, b) => b.score - a.score).slice(0, limit);
-}
-
 export async function addScore(name: string, score: number): Promise<void> {
-  const scores = readStorage();
-  const updated = [...scores, { name, score }]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_ENTRIES);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  try {
+    await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, score }),
+    });
+  } catch {
+    // fail silently — score submission is best-effort
+  }
 }
 
 export async function getRival(currentScore: number): Promise<Rival | null> {
-  const scores = readStorage();
-  const sorted = [...scores].sort((a, b) => a.score - b.score);
-  const rival = sorted.find(s => s.score > currentScore);
-  if (!rival) return null;
-  const rank = scores.filter(s => s.score > rival.score).length + 1;
-  return { ...rival, rank };
+  try {
+    const res = await fetch(`/api/rival?score=${currentScore}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
