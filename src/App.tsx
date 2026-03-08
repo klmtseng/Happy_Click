@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useGameLogic } from './hooks/useGameLogic';
 import { useSound } from './hooks/useSound';
+import { useMemeSound } from './hooks/useMemeSound';
+import type { MemeMilestone } from './hooks/useMemeSound';
 import { ClickButton } from './components/ClickButton';
 import { ComboMeter } from './components/ComboMeter';
 import { BackgroundEffects } from './components/BackgroundEffects';
@@ -10,6 +12,8 @@ import { SystemLog } from './components/SystemLog';
 import { Leaderboard } from './components/Leaderboard';
 import { FileUploader } from './components/FileUploader';
 import { GameOverModal } from './components/GameOverModal';
+import { ClickCounter } from './components/ClickCounter';
+import { MilestoneAnnouncement } from './components/MilestoneAnnouncement';
 
 export default function App() {
   const { combo, level, handleClick, maxCombo, score, isNewRecord, isDecaying, resetGame } = useGameLogic();
@@ -28,6 +32,12 @@ export default function App() {
   const [hyperspaceTarget, setHyperspaceTarget] = useState(500);
 
   const { playClickSound, playLevelUpSound, initAudio, playSpecialVoice, playDecaySound, toggleMute, isMuted, playHyperspaceSound, playRocketSound, playShockwaveSound, playEncouragementSound, playFlybySound } = useSound(combo, bgmPhase);
+  const { checkMilestone, resetMilestones, getNextMilestone } = useMemeSound();
+
+  // Meme milestone state
+  const [activeMilestone, setActiveMilestone] = useState<MemeMilestone | null>(null);
+  const [showMilestone, setShowMilestone] = useState(false);
+  const nextMilestone = getNextMilestone(score);
 
   // Ranking State
   const [currentRank, setCurrentRank] = useState<number>(1);
@@ -86,12 +96,15 @@ export default function App() {
   const handleRestart = () => {
       setIsGameOver(false);
       resetGame();
+      resetMilestones();
       // Reset visual states
       setStarColor('#ffffff');
       setBgmPhase(0);
       setHyperspaceTarget(300);
       setCurrentRank(1);
       setPrevRank(1);
+      setActiveMilestone(null);
+      setShowMilestone(false);
   };
 
   // Hyperspace Logic
@@ -233,10 +246,22 @@ export default function App() {
   const onButtonClick = () => {
     handleClick();
     playClickSound(combo);
-    
-    // Haptic feedback if available
-    if (navigator.vibrate) {
-      navigator.vibrate(5 + level * 5);
+
+    // Check for meme milestone (score + 1 because handleClick increments it)
+    const milestone = checkMilestone(score + 1);
+    if (milestone) {
+      setActiveMilestone(milestone);
+      setShowMilestone(true);
+      // Haptic burst for milestones
+      if (navigator.vibrate) {
+        navigator.vibrate([50, 30, 50, 30, 100]);
+      }
+      setTimeout(() => setShowMilestone(false), 1500);
+    } else {
+      // Normal haptic feedback
+      if (navigator.vibrate) {
+        navigator.vibrate(5 + level * 5);
+      }
     }
   };
 
@@ -399,8 +424,14 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Meme Milestone Announcement */}
+      <MilestoneAnnouncement milestone={activeMilestone} visible={showMilestone} />
+
+      {/* Click Counter & Next Milestone */}
+      <ClickCounter totalClicks={score} nextMilestone={nextMilestone} />
+
       {/* Max Combo Footer with Flash Effect */}
-      <motion.div 
+      <motion.div
         animate={isNewRecord ? { scale: [1, 1.5, 1], color: ["#4b5563", "#ffff00", "#4b5563"] } : {}}
         className="absolute bottom-4 left-4 font-tech text-xs text-gray-600 transition-colors"
       >
